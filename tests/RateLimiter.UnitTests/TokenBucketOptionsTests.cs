@@ -7,7 +7,7 @@ public class TokenBucketOptionsTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void Constructor_WhenCapacityIsNotPositive_ThrowsException(int capacity)
+    public void Throws_WhenCapacityIsInvalid(int capacity)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new TokenBucketOptions(
@@ -19,7 +19,7 @@ public class TokenBucketOptionsTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void Constructor_WhenTokensPerPeriodIsNotPositive_ThrowsException(
+    public void Throws_WhenTokensPerPeriodIsInvalid(
         int tokensPerPeriod)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -32,7 +32,7 @@ public class TokenBucketOptionsTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public void Constructor_WhenRefillPeriodIsNotPositive_ThrowsException(
+    public void Throws_WhenRefillPeriodIsInvalid(
         int refillPeriodMilliseconds)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>

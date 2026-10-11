@@ -5,7 +5,7 @@ namespace RateLimiter.UnitTests;
 public class TokenBucketRateLimiterTests
 {
     [Fact]
-    public void TryConsumeToken_WhenTokensAreAvailable_AllowsRequests()
+    public void AllowsRequests_WhenTokensAreAvailable()
     {
         var timeProvider = new ManualTimeProvider();
         var options = new TokenBucketOptions(
@@ -26,7 +26,7 @@ public class TokenBucketRateLimiterTests
     }
 
     [Fact]
-    public void TryConsumeToken_WhenBucketIsEmpty_RejectsRequest()
+    public void RejectsRequest_WhenBucketIsEmpty()
     {
         var timeProvider = new ManualTimeProvider();
         var options = new TokenBucketOptions(
@@ -44,7 +44,7 @@ public class TokenBucketRateLimiterTests
     }
 
     [Fact]
-    public void TryConsumeToken_AfterRefillPeriod_AllowsRequest()
+    public void AllowsRequest_AfterRefillPeriod()
     {
         var timeProvider = new ManualTimeProvider();
         var options = new TokenBucketOptions(
@@ -63,7 +63,7 @@ public class TokenBucketRateLimiterTests
     }
 
     [Fact]
-    public void TryConsumeToken_AfterLongDelay_DoesNotExceedCapacity()
+    public void DoesNotExceedCapacity_AfterLongDelay()
     {
         var timeProvider = new ManualTimeProvider();
         var options = new TokenBucketOptions(
@@ -82,7 +82,7 @@ public class TokenBucketRateLimiterTests
     }
 
     [Fact]
-    public void TryConsumeToken_ForDifferentClients_UsesIndependentBuckets()
+    public void KeepsBucketsIndependent_ForDifferentClients()
     {
         var timeProvider = new ManualTimeProvider();
         var options = new TokenBucketOptions(
@@ -101,7 +101,7 @@ public class TokenBucketRateLimiterTests
     }
 
     [Fact]
-    public void TryConsumeToken_BeforeNextRefill_ReturnsRemainingWaitTime()
+    public void ReturnsRemainingWait_BeforeNextRefill()
     {
         var timeProvider = new ManualTimeProvider();
         var options = new TokenBucketOptions(
@@ -121,5 +121,53 @@ public class TokenBucketRateLimiterTests
         Assert.Equal(TimeSpan.FromMilliseconds(750), firstRejection.RetryAfter);
         Assert.False(secondRejection.IsAllowed);
         Assert.Equal(TimeSpan.FromMilliseconds(250), secondRejection.RetryAfter);
+    }
+
+    [Fact]
+    public async Task AllowsOnlyCapacity_WhenRequestsAreConcurrent()
+    {
+        const int requestCount = 100;
+        const int capacity = 10;
+
+        var timeProvider = new ManualTimeProvider();
+        var options = new TokenBucketOptions(
+            capacity,
+            tokensPerPeriod: 1,
+            refillPeriod: TimeSpan.FromSeconds(1));
+        var rateLimiter = new TokenBucketRateLimiter(options, timeProvider);
+        var startGate = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var allTasksReady = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        var readyTaskCount = 0;
+
+        var tasks = Enumerable.Range(0, requestCount)
+            .Select(_ => Task.Run(async () =>
+            {
+                if (Interlocked.Increment(ref readyTaskCount) == requestCount)
+                {
+                    allTasksReady.TrySetResult(true);
+                }
+
+                await startGate.Task;
+                return rateLimiter.TryConsumeToken("client-123");
+            }))
+            .ToArray();
+
+        try
+        {
+            await allTasksReady.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        finally
+        {
+            startGate.TrySetResult(true);
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        Assert.Equal(capacity, results.Count(result => result.IsAllowed));
+        Assert.Equal(
+            requestCount - capacity,
+            results.Count(result => !result.IsAllowed));
     }
 }
