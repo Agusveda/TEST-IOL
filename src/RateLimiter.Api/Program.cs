@@ -20,3 +20,5 @@ app.MapGet(
     () => Results.Ok(new { message = "Request allowed." }));
 
 app.Run();
+
+public partial class Program { }
