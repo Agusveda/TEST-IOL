@@ -109,7 +109,7 @@ public class TokenBucketRateLimiter
             }
 
             var generatedTokens = completePeriods * options.TokensPerPeriod;
-            var tokensAdded = (int)Math.Min(missingTokens, generatedTokens);
+            var tokensAdded = (int)Math.Min(missingTokens, generatedTokens); // La cantidad que realmente agregamos es el menor valor entre los tokens que faltan y los tokens que se generaron.
 
             _tokens += tokensAdded;
         }
