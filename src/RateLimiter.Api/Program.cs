@@ -1,5 +1,22 @@
+using RateLimiter.Api.Middleware;
+using RateLimiter.Core;
 
-var builder = WebApplication.CreateBuilder(args); // Prepara el host de ASP.NET Core y configura los servicios necesarios para la aplicación web.
-var app = builder.Build(); // CONSTRUYE la aplicación web a partir de la configuración y servicios definidos en el builder.
+var builder = WebApplication.CreateBuilder(args);
 
-app.Run(); // iniciar la aplicación web y comenzar a escuchar las solicitudes entrantes.
+builder.Services.AddSingleton(
+    new TokenBucketOptions(
+        capacity: 3,
+        tokensPerPeriod: 1,
+        refillPeriod: TimeSpan.FromSeconds(1)));
+builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+builder.Services.AddSingleton<TokenBucketRateLimiter>();
+
+var app = builder.Build();
+
+app.UseMiddleware<RateLimitMiddleware>();
+
+app.MapGet(
+    "/api/test",
+    () => Results.Ok(new { message = "Request allowed." }));
+
+app.Run();
