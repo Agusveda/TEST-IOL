@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using RateLimiter.Core;
 
@@ -8,19 +9,36 @@ public class RateLimitMiddleware
     private const string ApiKeyHeaderName = "X-Api-Key";
     private const string LimitHeaderName = "X-RateLimit-Limit";
     private const string RemainingHeaderName = "X-RateLimit-Remaining";
+    private const string MeterName = "RateLimiter.Api";
+    private const string RequestsCounterName = "rate_limiter.requests";
+    private const string ResultTagName = "rate_limiter.result";
+    private const string AllowedResult = "allowed";
+    private const string RejectedResult = "rejected";
+    private const string InvalidResult = "invalid";
 
     private readonly RequestDelegate _next;
     private readonly TokenBucketRateLimiter _rateLimiter;
     private readonly TokenBucketOptions _options;
+    private readonly ILogger<RateLimitMiddleware> _logger;
+    private readonly Counter<long> _requestsCounter;
 
     public RateLimitMiddleware(
         RequestDelegate next,
         TokenBucketRateLimiter rateLimiter,
-        TokenBucketOptions options)
+        TokenBucketOptions options,
+        ILogger<RateLimitMiddleware> logger,
+        IMeterFactory meterFactory)
     {
         _next = next;
         _rateLimiter = rateLimiter;
         _options = options;
+        _logger = logger;
+
+        var meter = meterFactory.Create(MeterName);
+        _requestsCounter = meter.CreateCounter<long>(
+            RequestsCounterName,
+            unit: "{request}",
+            description: "Cantidad de solicitudes evaluadas por el limitador de tasa.");
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -30,9 +48,19 @@ public class RateLimitMiddleware
         if (apiKeyValues.Count != 1 ||
             string.IsNullOrWhiteSpace(apiKeyValues[0]))
         {
+            _requestsCounter.Add(
+                1,
+                new KeyValuePair<string, object?>(
+                    ResultTagName,
+                    InvalidResult));
+
+            _logger.LogWarning(
+                "Solicitud rechazada porque el encabezado {HeaderName} no es válido.",
+                ApiKeyHeaderName);
+
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             await context.Response.WriteAsJsonAsync(
-                new { error = "X-Api-Key header es obligatorio." });
+                new { error = "El encabezado X-Api-Key es obligatorio." });
             return;
         }
 
@@ -46,9 +74,21 @@ public class RateLimitMiddleware
 
         if (result.IsAllowed)
         {
+            _requestsCounter.Add(
+                1,
+                new KeyValuePair<string, object?>(
+                    ResultTagName,
+                    AllowedResult));
+
             await _next(context);
             return;
         }
+
+        _requestsCounter.Add(
+            1,
+            new KeyValuePair<string, object?>(
+                ResultTagName,
+                RejectedResult));
 
         context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
@@ -59,9 +99,13 @@ public class RateLimitMiddleware
 
             context.Response.Headers.RetryAfter =
                 retryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+
+            _logger.LogInformation(
+                "Límite de solicitudes excedido. Reintento disponible dentro de {RetryAfterSeconds} s.",
+                retryAfterSeconds);
         }
 
         await context.Response.WriteAsJsonAsync(
-            new { error = "Rate limit excedido." });
+            new { error = "Límite de solicitudes excedido." });
     }
 }

@@ -28,7 +28,7 @@ public class RateLimiterApiTests
         Assert.Equal("2", response.Headers.GetValues(RemainingHeaderName).Single());
         Assert.False(response.Headers.Contains("Retry-After"));
         Assert.Equal(
-            "{\"message\":\"Request permitido.\"}",
+            "{\"message\":\"Solicitud permitida.\"}",
             await response.Content.ReadAsStringAsync());
     }
 
@@ -64,7 +64,7 @@ public class RateLimiterApiTests
             "1",
             rejectedResponse.Headers.GetValues("Retry-After").Single());
         Assert.Equal(
-            "{\"error\":\"Rate limit excedido.\"}",
+            "{\"error\":\"Límite de solicitudes excedido.\"}",
             await rejectedResponse.Content.ReadAsStringAsync());
     }
 
@@ -81,7 +81,7 @@ public class RateLimiterApiTests
         Assert.False(response.Headers.Contains(RemainingHeaderName));
         Assert.False(response.Headers.Contains("Retry-After"));
         Assert.Equal(
-            "{\"error\":\"X-Api-Key header es obligatorio.\"}",
+            "{\"error\":\"El encabezado X-Api-Key es obligatorio.\"}",
             await response.Content.ReadAsStringAsync());
     }
 

@@ -28,7 +28,7 @@ public class TokenBucketOptions
             throw new ArgumentOutOfRangeException(
                 nameof(refillPeriod),
                 refillPeriod,
-                "El período de refill debe ser mayor que cero.");
+                "El período de recarga debe ser mayor que cero.");
         }
 
         Capacity = capacity;

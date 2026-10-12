@@ -26,6 +26,7 @@ var tokenBucketOptions = new TokenBucketOptions(
     tokensPerPeriod,
     TimeSpan.FromSeconds(refillPeriodSeconds));
 
+builder.Services.AddMetrics();
 builder.Services.AddSingleton(tokenBucketOptions);
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<TokenBucketRateLimiter>();
@@ -36,7 +37,7 @@ app.UseMiddleware<RateLimitMiddleware>();
 
 app.MapGet(
     "/api/test",
-    () => Results.Ok(new { message = "Request permitido." }));
+    () => Results.Ok(new { message = "Solicitud permitida." }));
 
 app.Run();
 
