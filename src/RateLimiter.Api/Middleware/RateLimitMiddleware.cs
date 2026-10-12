@@ -11,6 +11,7 @@ public class RateLimitMiddleware
     private const string RemainingHeaderName = "X-RateLimit-Remaining";
     private const string MeterName = "RateLimiter.Api";
     private const string RequestsCounterName = "rate_limiter.requests";
+    // No usamos clientId como etiqueta porque generaría demasiadas series de métricas.
     private const string ResultTagName = "rate_limiter.result";
     private const string AllowedResult = "allowed";
     private const string RejectedResult = "rejected";
@@ -64,6 +65,7 @@ public class RateLimitMiddleware
             return;
         }
 
+        // X-Api-Key identifica qué bucket usar, pero no autentica al cliente.
         var clientId = apiKeyValues[0]!.Trim();
         var result = _rateLimiter.TryConsumeToken(clientId);
 
@@ -74,6 +76,7 @@ public class RateLimitMiddleware
 
         if (result.IsAllowed)
         {
+            // Esta métrica cuenta la decisión del limiter, aunque después el endpoint falle.
             _requestsCounter.Add(
                 1,
                 new KeyValuePair<string, object?>(
@@ -94,6 +97,7 @@ public class RateLimitMiddleware
 
         if (result.RetryAfter is { } retryAfter)
         {
+            // Redondeamos hacia arriba para que el cliente no reintente antes de tiempo.
             var retryAfterSeconds =
                 (long)Math.Ceiling(retryAfter.TotalSeconds);
 

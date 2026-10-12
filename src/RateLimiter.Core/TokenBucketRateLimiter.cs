@@ -4,7 +4,7 @@ namespace RateLimiter.Core;
 
 public class TokenBucketRateLimiter
 {
-    // Relaciona cada cliente con su propio bucket de tokens.
+    // ConcurrentDictionary maneja los buckets de forma segura, pero cada bucket protege sus propios datos con un lock.
     private readonly ConcurrentDictionary<string, Bucket> _buckets = new(StringComparer.Ordinal);
 
     private readonly TokenBucketOptions _options;
@@ -33,7 +33,6 @@ public class TokenBucketRateLimiter
         private int _tokens;
         private long _lastCheckedTimestamp;
 
-        // Tiempo acumulado que todavía no completa otro período de refill.
         private long _refillRemainderTicks;
 
         public Bucket(int capacity, long initialTimestamp)
@@ -46,6 +45,7 @@ public class TokenBucketRateLimiter
             TokenBucketOptions options,
             TimeProvider timeProvider)
         {
+            // Este lock evita que dos requests del mismo cliente consuman el mismo token al mismo tiempo.
             lock (_lock)
             {
                 Refill(options, timeProvider);
@@ -60,6 +60,7 @@ public class TokenBucketRateLimiter
                         RetryAfter: null);
                 }
 
+                // RetryAfter indica cuánto falta realmente para que vuelva a haber un token.
                 var retryAfter = TimeSpan.FromTicks(
                     options.RefillPeriod.Ticks - _refillRemainderTicks);
 
@@ -86,6 +87,7 @@ public class TokenBucketRateLimiter
 
             _lastCheckedTimestamp = currentTimestamp;
 
+            // Guarda el tiempo parcial para no perderlo entre una request y la siguiente.
             var accumulatedTicks =
                 _refillRemainderTicks + elapsed.Ticks;
 
@@ -109,7 +111,7 @@ public class TokenBucketRateLimiter
             }
 
             var generatedTokens = completePeriods * options.TokensPerPeriod;
-            var tokensAdded = (int)Math.Min(missingTokens, generatedTokens); // La cantidad que realmente agregamos es el menor valor entre los tokens que faltan y los tokens que se generaron.
+            var tokensAdded = (int)Math.Min(missingTokens, generatedTokens);
 
             _tokens += tokensAdded;
         }

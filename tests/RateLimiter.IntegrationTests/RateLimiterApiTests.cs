@@ -15,6 +15,7 @@ public class RateLimiterApiTests
     private const string LimitHeaderName = "X-RateLimit-Limit";
     private const string RemainingHeaderName = "X-RateLimit-Remaining";
 
+    // Comprueba que una request válida pase cuando todavía quedan tokens.
     [Fact]
     public async Task AllowsRequest_WhenUnderLimit()
     {
@@ -32,6 +33,7 @@ public class RateLimiterApiTests
             await response.Content.ReadAsStringAsync());
     }
 
+    // Agota los tokens del cliente y comprueba que la siguiente request sea rechazada con 429.
     [Fact]
     public async Task RejectsRequest_WhenLimitIsExceeded()
     {
@@ -68,6 +70,7 @@ public class RateLimiterApiTests
             await rejectedResponse.Content.ReadAsStringAsync());
     }
 
+    // Comprueba que una request sin X-Api-Key sea rechazada antes de usar el rate limiter.
     [Fact]
     public async Task ReturnsBadRequest_WhenApiKeyIsMissing()
     {
@@ -85,6 +88,7 @@ public class RateLimiterApiTests
             await response.Content.ReadAsStringAsync());
     }
 
+    // Comprueba que una X-Api-Key vacía sea tratada como inválida.
     [Fact]
     public async Task ReturnsBadRequest_WhenApiKeyIsEmpty()
     {
@@ -100,6 +104,7 @@ public class RateLimiterApiTests
         Assert.False(response.Headers.Contains(RemainingHeaderName));
     }
 
+    // Comprueba que cada cliente tenga su propio límite y no comparta tokens con otros.
     [Fact]
     public async Task KeepsLimitsIndependent_ForDifferentClients()
     {
@@ -131,6 +136,7 @@ public class RateLimiterApiTests
                 .Single());
     }
 
+    // Agota el bucket, avanza el tiempo y comprueba que aparezca un nuevo token por refill.
     [Fact]
     public async Task AllowsRequest_AfterRefill()
     {
@@ -157,6 +163,7 @@ public class RateLimiterApiTests
         Assert.False(thirdResponse.Headers.Contains("Retry-After"));
     }
 
+    // Cambia la configuración antes de iniciar la API para comprobar que falle si es inválida.
     [Theory]
     [InlineData("RateLimiter:Capacity", "capacity")]
     [InlineData("RateLimiter:TokensPerPeriod", "tokensPerPeriod")]
@@ -206,6 +213,7 @@ public class RateLimiterApiTests
         return await client.SendAsync(request);
     }
 
+    // Reemplaza la configuración y el reloj reales por versiones controladas para el test.
     private static WebApplicationFactory<Program> CreateFactory(
         TokenBucketOptions options,
         TimeProvider timeProvider)

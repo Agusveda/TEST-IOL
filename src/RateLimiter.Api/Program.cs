@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 var rateLimiterConfiguration =
     builder.Configuration.GetRequiredSection("RateLimiter");
 
+// int? permite saber si la configuración falta o si realmente tiene valor 0.
 var capacity =
     rateLimiterConfiguration.GetValue<int?>("Capacity")
     ?? throw new InvalidOperationException(
@@ -21,6 +22,7 @@ var refillPeriodSeconds =
     ?? throw new InvalidOperationException(
         "La configuración RateLimiter:RefillPeriodSeconds es obligatoria.");
 
+// Si la configuración es inválida, la aplicación falla antes de arrancar.
 var tokenBucketOptions = new TokenBucketOptions(
     capacity,
     tokensPerPeriod,
@@ -41,4 +43,5 @@ app.MapGet(
 
 app.Run();
 
+// Hace que WebApplicationFactory pueda usar Program desde los tests de integración.
 public partial class Program { }

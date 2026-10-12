@@ -4,6 +4,7 @@ namespace RateLimiter.UnitTests;
 
 public class TokenBucketRateLimiterTests
 {
+    // Comprueba que una request sea permitida mientras todavía haya tokens disponibles.
     [Fact]
     public void AllowsRequests_WhenTokensAreAvailable()
     {
@@ -25,6 +26,7 @@ public class TokenBucketRateLimiterTests
         Assert.Null(secondResult.RetryAfter);
     }
 
+    // Consume el último token y comprueba que el siguiente intento sea rechazado.
     [Fact]
     public void RejectsRequest_WhenBucketIsEmpty()
     {
@@ -43,6 +45,7 @@ public class TokenBucketRateLimiterTests
         Assert.Equal(TimeSpan.FromSeconds(1), result.RetryAfter);
     }
 
+    // Agota el bucket, avanza un período de refill y comprueba que vuelva a haber un token.
     [Fact]
     public void AllowsRequest_AfterRefillPeriod()
     {
@@ -62,6 +65,7 @@ public class TokenBucketRateLimiterTests
         Assert.Null(result.RetryAfter);
     }
 
+    // Comprueba que el bucket nunca supere su capacidad aunque pase mucho tiempo.
     [Fact]
     public void DoesNotExceedCapacity_AfterLongDelay()
     {
@@ -81,6 +85,7 @@ public class TokenBucketRateLimiterTests
         Assert.Equal(1, result.RemainingTokens);
     }
 
+    // Comprueba que cada cliente tenga su propio bucket y no comparta tokens con otros.
     [Fact]
     public void KeepsBucketsIndependent_ForDifferentClients()
     {
@@ -100,6 +105,7 @@ public class TokenBucketRateLimiterTests
         Assert.True(secondClientResult.IsAllowed);
     }
 
+    // Comprueba que RetryAfter indique solo el tiempo que falta para el próximo token.
     [Fact]
     public void ReturnsRemainingWait_BeforeNextRefill()
     {
@@ -123,6 +129,7 @@ public class TokenBucketRateLimiterTests
         Assert.Equal(TimeSpan.FromMilliseconds(250), secondRejection.RetryAfter);
     }
 
+    // Lanza muchas requests juntas para comprobar que nunca se consuman más tokens que la capacidad.
     [Fact]
     public async Task AllowsOnlyCapacity_WhenRequestsAreConcurrent()
     {
