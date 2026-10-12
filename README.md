@@ -89,6 +89,73 @@ Las respuestas `429 Too Many Requests` también incluyen:
 
 Una respuesta `400 Bad Request` ocurre antes de consultar el Rate Limiter y no incluye estos headers.
 
+## Prueba manual con Postman
+
+Con la API ejecutándose en `http://localhost:5002`, crear una request en Postman con:
+
+- Método: `GET`.
+- URL: `http://localhost:5002/api/test`.
+- Header: `X-Api-Key: client-123`.
+
+### 1. Request permitida
+
+Enviar la request con `X-Api-Key: client-123`.
+
+Se espera:
+
+- `200 OK`.
+- `X-RateLimit-Limit: 3`.
+- `X-RateLimit-Remaining` con los tokens restantes.
+- Body:
+
+```json
+{
+  "message": "Solicitud permitida."
+}
+```
+
+### 2. Límite excedido
+
+Enviar varias requests seguidas con el mismo `X-Api-Key`. Cuando el bucket se quede sin tokens, se espera:
+
+- `429 Too Many Requests`.
+- `X-RateLimit-Remaining: 0`.
+- Header `Retry-After`.
+- Body:
+
+```json
+{
+  "error": "Límite de solicitudes excedido."
+}
+```
+
+La configuración por defecto utiliza `Capacity = 3`, `TokensPerPeriod = 1` y `RefillPeriodSeconds = 1`. Como el bucket puede recargarse entre una request y otra, conviene enviar varias requests rápidamente para observar el `429`.
+
+### 3. Clientes independientes
+
+Después de agotar el bucket de `client-123`, cambiar el header a `X-Api-Key: client-B`. Se espera `200 OK` porque cada cliente mantiene su propio bucket.
+
+### 4. Request sin X-Api-Key
+
+Eliminar `X-Api-Key` y enviar nuevamente la request.
+
+Se espera:
+
+- `400 Bad Request`.
+- Body:
+
+```json
+{
+  "error": "El encabezado X-Api-Key es obligatorio."
+}
+```
+
+Esta respuesta ocurre antes de consultar el Rate Limiter.
+
+### Headers de respuesta
+
+`X-RateLimit-Limit`, `X-RateLimit-Remaining` y `Retry-After` son headers de respuesta y no deben cargarse manualmente en Postman. El único header que debe agregarse a una request válida es `X-Api-Key`.
+
 ## Configuración
 
 La configuración actual se encuentra en `src/RateLimiter.Api/appsettings.json`:
