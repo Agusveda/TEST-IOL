@@ -28,7 +28,7 @@ public class RateLimiterApiTests
         Assert.Equal("2", response.Headers.GetValues(RemainingHeaderName).Single());
         Assert.False(response.Headers.Contains("Retry-After"));
         Assert.Equal(
-            "{\"message\":\"Request allowed.\"}",
+            "{\"message\":\"Request permitido.\"}",
             await response.Content.ReadAsStringAsync());
     }
 
@@ -64,7 +64,7 @@ public class RateLimiterApiTests
             "1",
             rejectedResponse.Headers.GetValues("Retry-After").Single());
         Assert.Equal(
-            "{\"error\":\"Rate limit exceeded.\"}",
+            "{\"error\":\"Rate limit excedido.\"}",
             await rejectedResponse.Content.ReadAsStringAsync());
     }
 
@@ -81,7 +81,7 @@ public class RateLimiterApiTests
         Assert.False(response.Headers.Contains(RemainingHeaderName));
         Assert.False(response.Headers.Contains("Retry-After"));
         Assert.Equal(
-            "{\"error\":\"X-Api-Key header is required.\"}",
+            "{\"error\":\"X-Api-Key header es obligatorio.\"}",
             await response.Content.ReadAsStringAsync());
     }
 
@@ -155,6 +155,45 @@ public class RateLimiterApiTests
             "0",
             thirdResponse.Headers.GetValues(RemainingHeaderName).Single());
         Assert.False(thirdResponse.Headers.Contains("Retry-After"));
+    }
+
+    [Theory]
+    [InlineData("RateLimiter:Capacity", "capacity")]
+    [InlineData("RateLimiter:TokensPerPeriod", "tokensPerPeriod")]
+    [InlineData("RateLimiter:RefillPeriodSeconds", "refillPeriod")]
+    public void FailsAtStartup_WhenRateLimiterConfigurationIsInvalid(
+        string configurationKey,
+        string expectedParameterName)
+    {
+        var environmentVariableName =
+            configurationKey.Replace(":", "__");
+        var originalValue =
+            Environment.GetEnvironmentVariable(environmentVariableName);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(
+                environmentVariableName,
+                "0");
+
+            using var factory = new WebApplicationFactory<Program>();
+
+            var exception =
+                Assert.ThrowsAny<Exception>(factory.CreateClient);
+
+            var configurationException =
+                Assert.IsType<ArgumentOutOfRangeException>(exception);
+
+            Assert.Equal(
+                expectedParameterName,
+                configurationException.ParamName);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(
+                environmentVariableName,
+                originalValue);
+        }
     }
 
     private static async Task<HttpResponseMessage> SendAsync(

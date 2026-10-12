@@ -32,7 +32,7 @@ public class RateLimitMiddleware
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             await context.Response.WriteAsJsonAsync(
-                new { error = "X-Api-Key header is required." });
+                new { error = "X-Api-Key header es obligatorio." });
             return;
         }
 
@@ -62,6 +62,6 @@ public class RateLimitMiddleware
         }
 
         await context.Response.WriteAsJsonAsync(
-            new { error = "Rate limit exceeded." });
+            new { error = "Rate limit excedido." });
     }
 }

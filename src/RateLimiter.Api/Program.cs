@@ -3,11 +3,30 @@ using RateLimiter.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton(
-    new TokenBucketOptions(
-        capacity: 3,
-        tokensPerPeriod: 1,
-        refillPeriod: TimeSpan.FromSeconds(1)));
+var rateLimiterConfiguration =
+    builder.Configuration.GetRequiredSection("RateLimiter");
+
+var capacity =
+    rateLimiterConfiguration.GetValue<int?>("Capacity")
+    ?? throw new InvalidOperationException(
+        "La configuración RateLimiter:Capacity es obligatoria.");
+
+var tokensPerPeriod =
+    rateLimiterConfiguration.GetValue<int?>("TokensPerPeriod")
+    ?? throw new InvalidOperationException(
+        "La configuración RateLimiter:TokensPerPeriod es obligatoria.");
+
+var refillPeriodSeconds =
+    rateLimiterConfiguration.GetValue<int?>("RefillPeriodSeconds")
+    ?? throw new InvalidOperationException(
+        "La configuración RateLimiter:RefillPeriodSeconds es obligatoria.");
+
+var tokenBucketOptions = new TokenBucketOptions(
+    capacity,
+    tokensPerPeriod,
+    TimeSpan.FromSeconds(refillPeriodSeconds));
+
+builder.Services.AddSingleton(tokenBucketOptions);
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddSingleton<TokenBucketRateLimiter>();
 
@@ -17,7 +36,7 @@ app.UseMiddleware<RateLimitMiddleware>();
 
 app.MapGet(
     "/api/test",
-    () => Results.Ok(new { message = "Request allowed." }));
+    () => Results.Ok(new { message = "Request permitido." }));
 
 app.Run();
 

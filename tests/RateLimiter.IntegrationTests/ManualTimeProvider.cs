@@ -15,7 +15,7 @@ internal class ManualTimeProvider : TimeProvider
             throw new ArgumentOutOfRangeException(
                 nameof(elapsed),
                 elapsed,
-                "Elapsed time cannot be negative.");
+                "El tiempo transcurrido no puede ser negativo.");
         }
 
         _timestamp += elapsed.Ticks;

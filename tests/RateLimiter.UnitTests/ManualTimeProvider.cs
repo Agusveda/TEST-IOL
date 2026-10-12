@@ -1,6 +1,6 @@
 namespace RateLimiter.UnitTests;
 
-internal class ManualTimeProvider : TimeProvider
+internal class ManualTimeProvider : TimeProvider // ManualTimeProvider permite controlar el tiempo
 {
     private long _timestamp;
 
@@ -12,10 +12,7 @@ internal class ManualTimeProvider : TimeProvider
     {
         if (elapsed < TimeSpan.Zero)
         {
-            throw new ArgumentOutOfRangeException(
-                nameof(elapsed),
-                elapsed,
-                "Elapsed time cannot be negative.");
+            throw new ArgumentOutOfRangeException(nameof(elapsed),elapsed,"el tiempo no puede ser negativo.");
         }
 
         _timestamp += elapsed.Ticks;
